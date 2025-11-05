@@ -1,7 +1,8 @@
 import {ethers,Contract} from "ethers"
 
 import stakingAbi from "../ABI/stakingABI.json"
-import stakingTokenAbi from "../ABI/stakingTokenABI.json"
+import stakeTokenAbi from "../ABI/stakeTokenABI.json"
+
 
 
 export const connectWallet=async()=>{
@@ -31,7 +32,7 @@ export const connectWallet=async()=>{
 
         })    
 
-        chainId=parseInt(chainIdHex,10);
+        chainId=parseInt(chainIdHex,16);
 
         let selectedAccount=accounts[0];
 
@@ -53,7 +54,12 @@ export const connectWallet=async()=>{
 
         stakingContract=new Contract(stakingContractAddress, stakingAbi, signer);
 
-        stakeTokenContract=new Contract(stakeTokenContractAddress,stakingTokenAbi,signer);
+        stakeTokenContract=new Contract(stakeTokenContractAddress,stakeTokenAbi,signer);
+
+        console.log( provider,
+                selectedAccount,
+        stakingContract,
+        chainId);
 
         return {provider,selectedAccount,stakingContract,stakeTokenContract,chainId};
 
