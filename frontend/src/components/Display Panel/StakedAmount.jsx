@@ -5,6 +5,7 @@ import {useState, useEffect, useContext} from 'react';
 import Web3Context from '../../context/Web3Context';
 
 import {ethers} from "ethers";
+import StakingContext from '../../context/StakingContext';
 
 
 
@@ -12,6 +13,7 @@ import {ethers} from "ethers";
 const StakedAmount = () => {
 
   const {stakingContract, selectedAccount}= useContext(Web3Context);
+  const {isReload}=useContext(StakingContext);
 
   const [stakedAmount, setStakedAmount]=useState("0");
 
@@ -43,7 +45,7 @@ const StakedAmount = () => {
     stakingContract && fetchStakedBalance()
 
 
-  },[stakingContract,selectedAccount])
+  },[stakingContract,selectedAccount,isReload])
 
 
 
