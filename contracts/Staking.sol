@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract Staking is ReentrancyGuard {
-    using SafeMath for uint256;
     IERC20 public s_stakingToken;
     IERC20 public s_rewardToken;
 
@@ -25,6 +23,8 @@ contract Staking is ReentrancyGuard {
     event RewardsClaimed(address indexed user, uint256 indexed amount);
 
     constructor(address stakingToken, address rewardToken) {
+        require(stakingToken != address(0), "Staking token cannot be zero address");
+        require(rewardToken != address(0), "Reward token cannot be zero address");
         s_stakingToken = IERC20(stakingToken);
         s_rewardToken = IERC20(rewardToken);
     }
@@ -33,20 +33,19 @@ contract Staking is ReentrancyGuard {
         if (totalStakedTokens == 0) {
             return rewardPerTokenStored;
         }
-        uint totalTime = block.timestamp.sub(lastUpdateTime);
-        uint totalRewards = REWARD_RATE.mul(totalTime);
+        uint totalTime = block.timestamp - lastUpdateTime;
+        uint totalRewards = REWARD_RATE * totalTime;
         return
-            rewardPerTokenStored.add(
-                totalRewards.mul(1e18).div(totalStakedTokens)
-            );
+            rewardPerTokenStored +
+            (totalRewards * 1e18 / totalStakedTokens);
     }
 
     function earned(address account) public view returns (uint) {
         return
-            stakedBalance[account]
-                .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
-                .div(1e18)
-                .add(rewards[account]);
+            (stakedBalance[account] *
+                (rewardPerToken() - userRewardPerTokenPaid[account])) /
+            1e18 +
+            rewards[account];
     }
 
     modifier updateReward(address account) {
@@ -59,8 +58,8 @@ contract Staking is ReentrancyGuard {
 
     function stake(uint amount) external nonReentrant updateReward(msg.sender) {
         require(amount > 0, "Amount must be greater than zero");
-        totalStakedTokens = totalStakedTokens.add(amount);
-        stakedBalance[msg.sender] = stakedBalance[msg.sender].add(amount);
+        totalStakedTokens = totalStakedTokens + amount;
+        stakedBalance[msg.sender] = stakedBalance[msg.sender] + amount;
         emit Staked(msg.sender, amount);
         bool success = s_stakingToken.transferFrom(
             msg.sender,
@@ -78,10 +77,9 @@ contract Staking is ReentrancyGuard {
             stakedBalance[msg.sender] >= amount,
             "Staked amount not enough"
         );
-        totalStakedTokens = totalStakedTokens.sub(amount);
-        stakedBalance[msg.sender] = stakedBalance[msg.sender].sub(amount);
+        totalStakedTokens = totalStakedTokens - amount;
+        stakedBalance[msg.sender] = stakedBalance[msg.sender] - amount;
         emit Withdrawn(msg.sender, amount);
-        (msg.sender, amount);
         bool success = s_stakingToken.transfer(msg.sender, amount);
         require(success, "Transfer Failed");
     }
@@ -89,6 +87,10 @@ contract Staking is ReentrancyGuard {
     function getReward() external nonReentrant updateReward(msg.sender) {
         uint reward = rewards[msg.sender];
         require(reward > 0, "No rewards to claim");
+        require(
+            s_rewardToken.balanceOf(address(this)) >= reward,
+            "Insufficient reward token balance"
+        );
         rewards[msg.sender] = 0;
         emit RewardsClaimed(msg.sender, reward);
         bool success = s_rewardToken.transfer(msg.sender, reward);
@@ -96,4 +98,4 @@ contract Staking is ReentrancyGuard {
     }
 }
 
-//0x79123fc40E676D6af3dDFbd71782dbA14Dee84b7
+//0xF8DfC4770C2D0cd0ce68D72cF290b8CF65E6e0A2
